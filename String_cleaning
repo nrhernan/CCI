@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+
+import os
+import csv
+import re
+import string
+
+os.chdir("C:/Users/Naomi/Google Drive/CCI")
+
+punct = '!"#$%&()*+,-./:;<=>?@[\]^_`{|}~'
+
+sp = re.compile(r'[\s\n\r\t\v\f]+')
+hyph_rng = re.compile(r'([0-9]|%)(-)[0-9]')
+gt = re.compile(r'>')
+lt = re.compile(r'<')
+eq = re.compile(r'=|(is)* *equals*( to)* *')
+
+repl = {
+    'hyph':(hyph_rng, ' to ', 1, -1)
+    ,'gt':(gt, ' greater than ', 0, 0)
+    ,'lt':(lt, ' less than ', 0, 0)
+    ,'eq':(eq, ' is equal to ', 0, 0)
+}
+
+def remove_sub (mystr, rem):
+    ex = [x for x in rem]
+    new = [x for x in mystr if x not in ex]
+    return "".join(new)
+
+def repl_str (mystr, myre):
+    new_str = mystr
+    sch = repl[myre][0].search(new_str)
+    # print (sch)
+    while sch:
+        work_str = new_str[:sch.start()+repl[myre][2]]+repl[myre][1]+new_str[sch.end()+repl[myre][3]:]
+        print (work_str)
+        # print (work_str)
+        new_str = work_str
+        sch = repl[myre][0].search(new_str)
+    return new_str
+
+def clean_str (mystr):
+    str_low = mystr.lower()
+    print (str_low)
+    for key in repl.keys():
+        new_str = repl_str(str_low, key)
+        print (new_str)
+        str_low = new_str
+        print(str_low)
+    str_fixSp = " ".join(sp.split(str_low)).strip()
+    str_fixPunct = remove_sub(str_fixSp, punct)
+    return str_fixPunct
+
+
+def parse (mydoc, myflds):
+    count = 0
+    with open(mydoc+'.csv', 'r') as fobj:
+        rd = csv.DictReader(fobj, delimiter = ',')
+        with open(mydoc+'_results.csv', 'w') as oobj:
+            wr = csv.DictWriter(oobj, fieldnames=myflds)
+            wr.writeheader()
+            for line in rd:
+                print(line)
+                myline = line
+                newstr = line['decode']
+                print(newstr)
+                id = line['refvalueid']
+                print(id)
+                len_id = len(id)
+                if newstr[:len_id+1]==str(id)+".":
+                    newstr_strip = newstr[re.search('.', newstr).end()+1:]
+                elif newstr[:len_id]==str(id)+".":
+                    newstr_strip = newstr[re.search('.', newstr).end()+1:]
+                else:
+                    newstr_strip = newstr
+                print (newstr_strip)
+                clean = clean_str(newstr_strip)
+                print (clean)
+                myline['decode_clean'] = clean
+                wr.writerow(myline)
+                print (count)
+                count+=1
+
+    print (mydoc+' file written')
+
+fls = {
+    'labv_forpy':["unique_id"
+        ,"reftypeid"
+        ,"fieldid"
+        ,"biodbx_fieldid"
+        ,"refvalueid"
+        ,"decode"
+        ,"decode_clean"]
+    ,'BDX_forpy':['unique_id'
+        ,'fieldid'
+        ,'existing_code'
+        ,'refvalueid'
+        ,'decode'
+        ,'decode_clean']
+}
+
+# parse('labv_forpy', fls['labv_forpy'])
+parse('BDX_forpy', fls['BDX_forpy'])
+
